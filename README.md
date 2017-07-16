@@ -1,4 +1,4 @@
-# GDISF Teaching Materials
+<!-- # GDISF Teaching Materials
 
 Teaching materials for HTML, CSS, JS, and HTML5. We maintain our Open Source materials on this repo. 
 
@@ -27,3 +27,4 @@ We use Github Pages to host our slides! If you're merging changes, make sure you
 	- [ ] Solutions to exercises
 	- [ ] Follow Up Email
 * If you want your workshop to be included in our [national website](https://www.girldevelopit.com/materials), check out this [review rubric](https://docs.google.com/document/d/1zw7qX2EAO08rGAjl9683aVxtsAoZQLxmy7evu2my4OY/edit). Please note that this is not a requirement for inclusion in this repository.
+ -->
