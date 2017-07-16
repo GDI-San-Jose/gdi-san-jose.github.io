@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8"/>
+  <title>Exercise Explorer: HTML, CSS, JS</title>
+  <link href="../common/bootstrap.css" rel="stylesheet">
+  <link href="../common/bootstrap-responsive.css" rel="stylesheet">
+  <link href="../common/styles.css" rel="stylesheet" type="text/css" />
+  <style>
+  form .label {
+  	margin-left: 3px;
+  	font-size: larger;
+  	vertical-align: middle;
+  }
+  .label {
+  	margin-right: 4px;
+  }
+  .label.html {
+  	background-color: #F06529;
+  }
+  .label.css {
+  	background-color: #28a9e0;
+  }
+  .label.js {
+  	background-color: #3FD11A;
+  }
+  .favicon {
+  	width: 16px;
+  	height: 16px;
+  	margin-right: 3px;
+  	vertical-align: top;
+  }
+  .exercise.done p {
+  	opacity: .2;
+  	text-decoration: line-through;
+  }
+  </style>
+ </head>
+ <body>
+
+	<div class="container">
+		<h1 class="page-header">Exercise Explorer</h1>
+		
+    <form id="exercises-filter" class="form-inline" style="text-align: left;">
+        <label class="checkbox">
+		    <input type="radio" name="filter" value="js" checked onclick="filterExercises();">
+		    <span class="label">ALL</span>
+		 </label>
+	    <label class="checkbox">
+		    <input type="radio" name="filter" value="html" onclick="filterExercises(this.value);">
+		    <span class="label html">HTML</span>
+		  </label>
+		  <label class="checkbox">
+		    <input type="radio" name="filter"  value="css" onclick="filterExercises(this.value);">
+		    <span class="label css">CSS</span>
+		  </label>
+		 	<label class="checkbox">
+		    <input type="radio" name="filter" value="js" onclick="filterExercises(this.value);">
+		    <span class="label js">JavaScript</span>
+		  </label>
+
+		</form>
+	
+		<table id="exercises-table" class="table table-bordered">
+			<thead>
+				<tr>
+					<th>Exercise
+					<th>Topics
+                    <th>Done?
+				</tr>
+			</thead>
+			<tbody></tbody>
+		</table>
+		
+	</div>
+
+	<script>
+	var exercises = [];
+	var subtopics = {};
+	
+	var SS_KEY = '0Ah0xU81penP1dDcxOEFrWlplSm5WekJYRm9lcHN6ZWc';
+	
+	function loadSpreadsheet(ssId, worksheetId, callbackName) {
+		var url = 'http://spreadsheets.google.com/feeds/list/' + ssId + '/' + worksheetId + '/public/values?alt=json-in-script&callback=' + callbackName;
+		var script = document.createElement('script');
+		script.src = url;
+		document.body.appendChild(script);
+	}
+	
+	function getColValue(entry, colName) {
+		var column = entry['gsx$' + colName];
+		if (column) {
+			return column.$t;
+		}
+		return null;
+	}
+	
+	function getCols(entry, colNames) {
+		var obj = {};
+		for (var i = 0; i < colNames.length; i++) {
+			obj[colNames[i]] = getColValue(entry, colNames[i]);
+		}
+		return obj;
+	}
+	
+	function onExercisesLoad(json) {
+		var columns = ['source', 'title', 'description', 'link', 'topics', 'html', 'css', 'js', 'before', 'series'];
+		var entries = json.feed.entry || [];
+		for (var i = 0; i < entries.length; i++) {
+			exercises.push(getCols(entries[i], columns));
+		}
+		renderExercises(exercises);
+		loadSpreadsheet(SS_KEY, 'od5', 'onTopicsLoad');
+	}
+	
+	function getDomain(url) {
+		return url.match(/:\/\/(.[^/]+)/)[1];
+	}
+	
+	function renderExercises(exercises) {
+	
+		function createLabels(topic, labels) {
+			var cell = document.createElement('p');
+	
+			labels = labels.split(',');
+			labels.sort();
+			for (var i = 0; i < labels.length; i++) {
+				if (labels[i].length < 2) continue;
+				cell.innerHTML += '<span class="subtopic label ' + topic + '">' + labels[i].replace(' ', '') + '</span>';
+			}
+			return cell;
+		}
+	
+		var exerciseTbody = document.getElementsByTagName('tbody')[0];
+		exerciseTbody.innerHTML = '';
+		for (var i = 0; i < exercises.length; i++) {
+			var exercise = exercises[i];
+			var row = document.createElement('tr');
+			row.className = 'exercise';
+			var cell = document.createElement('td');
+			var linkDomain = getDomain(exercise.link);
+			cell.innerHTML = '<p><img class="favicon" title="' + linkDomain + '" src="http://www.google.com/s2/u/0/favicons?domain=' + linkDomain + '"><a target="_blank" href="' + exercise.link + '">' + exercise.title + '</a><br>' + exercise.description + '</p>';
+			row.appendChild(cell);
+			var topicsCell = document.createElement('td');
+			topicsCell.appendChild(createLabels('html', exercise.html));
+			topicsCell.appendChild(createLabels('css', exercise.css));
+			topicsCell.appendChild(createLabels('js', exercise.js));
+			row.appendChild(topicsCell);
+			var doneCell = document.createElement('td');
+	
+			var doneKey = 'exercise-' + exercise.link + '-done';
+			var input = document.createElement('input');
+			input.setAttribute('type', 'checkbox');
+			input.setAttribute('data-propkey', doneKey);
+			doneCell.appendChild(input);
+			row.appendChild(doneCell);
+			input.addEventListener('click', updateDoneState);
+	
+			exerciseTbody.appendChild(row);
+		}
+		updateFromLocalStorage();
+		updateDoneState();
+	}
+	
+	function updateDoneState(e) {
+		var exerciseRows = document.querySelectorAll('.exercise');
+		for (var i = 0; i < exerciseRows.length; i++) {
+			if (exerciseRows[i].getElementsByTagName('input')[0].checked) {
+				exerciseRows[i].classList.add('done');
+			}
+		}
+	}
+	
+	function filterExercises(topic) {
+		var exerciseRows = document.querySelectorAll('.exercise');
+		for (var i = 0; i < exerciseRows.length; i++) {
+			if (!topic) {
+				exerciseRows[i].style.display = 'table-row';
+			}
+			else {
+				if (exerciseRows[i].querySelectorAll('.' + topic).length > 0) {
+					exerciseRows[i].style.display = 'table-row';
+				}
+				else {
+					exerciseRows[i].style.display = 'none';
+				}
+			}
+		}
+	}
+	
+	function onTopicsLoad(json) {
+		var columns = ['label', 'description', 'topic'];
+		var entries = json.feed.entry || [];
+		for (var i = 0; i < entries.length; i++) {
+			var subtopic = getCols(entries[i], columns);
+			subtopics[subtopic.label.toLowerCase()] = subtopic;
+		}
+		renderTopics();
+	}
+	
+	function renderTopics() {
+		var labelSpans = document.querySelectorAll('.subtopic');
+		for (var i = 0; i < labelSpans.length; i++) {
+			var labelSpan = labelSpans[i];
+			var subtopicLabel = labelSpan.innerText.toLowerCase();
+			var subtopic = subtopics[subtopicLabel];
+			if (subtopic) {
+				labelSpan.setAttribute('title', subtopic.description);
+			}
+		}
+	}
+	
+	
+	var LS_DATA_KEY = 'data-propkey';
+	
+	function updateFromLocalStorage() {
+		function isDefined(variable) {
+			return (variable !== undefined && variable !== null);
+		}
+	
+		var cachedStorage = {};
+		var nodes = document.querySelectorAll('[' + LS_DATA_KEY + ']');
+		for (var i = 0; i < nodes.length; i++) {
+			var node = nodes[i];
+			var dataKey = node.getAttribute(LS_DATA_KEY);
+			var nodeName = node.nodeName;
+			var nodeType = node.getAttribute('type');
+			var keyValue = localStorage.getItem(dataKey);
+			cachedStorage[dataKey] = keyValue;
+			if (!isDefined(keyValue)) continue;
+			if (nodeName == 'TEXTAREA') {
+				node.value = keyValue;
+			}
+			if (nodeName == 'INPUT' && (nodeType == 'text' || nodeType == 'hidden' || nodeType == 'number')) {
+				node.value = keyValue;
+			}
+			if (nodeName == 'INPUT' && nodeType == 'checkbox') {
+				if (keyValue === true || keyValue == 'true') {
+					node.setAttribute('checked');
+				}
+			}
+			if (nodeName == 'SELECT') {
+				node.value = keyValue;
+			}
+		}
+	}
+	
+	function updateLocalStorage() {
+		var nodes = document.querySelectorAll('[' + LS_DATA_KEY + ']');
+		for (var i = 0; i < nodes.length; i++) {
+			var node = nodes[i];
+			var dataKey = node.getAttribute(LS_DATA_KEY);
+			var nodeName = node.nodeName;
+			var nodeType = node.getAttribute('type');
+			var keyValue;
+			if (nodeName == 'TEXTAREA') {
+				keyValue = node.value;
+			}
+			if (nodeName == 'INPUT' && (nodeType == 'text' || nodeType == 'hidden' || nodeType == 'number')) {
+				keyValue = node.value;
+			}
+			if (nodeName == 'INPUT' && nodeType == 'checkbox') {
+				keyValue = node.checked ? true : false;
+			}
+			if (nodeName == 'SELECT') {
+				keyValue = node.value;
+			}
+			localStorage.setItem(dataKey, keyValue);
+		}
+	}
+	
+	
+	window.addEventListener('load', function() {
+		loadSpreadsheet(SS_KEY, 'od6', 'onExercisesLoad');
+	});
+	
+	window.addEventListener('unload', function() {
+		updateLocalStorage();
+	});
+	
+	</script>
+ </body>
+</html>
